@@ -18,13 +18,17 @@ async function main() {
 
   await client.login(TOKENS.discord);
 
-  schedule.scheduleJob('* * * * *', async () => {
+  schedule.scheduleJob('0 8 * * *', async () => {
     const data = await getAPOD();
     const channel = await client.channels.fetch(CHANNEL, true);
     console.debug(data);
 
-    await channel.send(data.hdurl)
-      .catch(console.log);
+    await channel.send('>>> ' + data.date + 
+                       '\n' + data.copyright + 
+                       '\n' + data.title)
+                       .catch(console.log)
+    await channel.send(data.hdurl).catch(console.log)
+    await channel.send('> ' + data.explanation).catch(console.log)
   });
 }
 
