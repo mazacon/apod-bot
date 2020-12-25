@@ -23,12 +23,15 @@ async function main() {
     const channel = await client.channels.fetch(CHANNEL, true);
     console.debug(data);
 
-    await channel.send('>>> ' + data.date + 
-                       '\n' + data.copyright + 
-                       '\n' + data.title)
-                       .catch(console.log)
-    await channel.send(data.hdurl).catch(console.log)
-    await channel.send('> ' + data.explanation).catch(console.log)
+    const embed = new djs.MessageEmbed();
+
+    embed.setTitle(data.title)
+         .setImage(data.hdurl)
+         .setDescription(data.explanation)
+         .setColor(0xff0000)
+         .setFooter('APOD for ' + data.date + ' • Photo by ' + data.copyright);
+
+    await channel.send(embed).catch(console.log);
   });
 }
 
