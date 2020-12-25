@@ -18,13 +18,20 @@ async function main() {
 
   await client.login(TOKENS.discord);
 
-  schedule.scheduleJob('* * * * *', async () => {
+  schedule.scheduleJob('0 8 * * *', async () => {
     const data = await getAPOD();
     const channel = await client.channels.fetch(CHANNEL, true);
     console.debug(data);
 
-    await channel.send(data.hdurl)
-      .catch(console.log);
+    const embed = new djs.MessageEmbed();
+
+    embed.setTitle(data.title)
+         .setImage(data.hdurl)
+         .setDescription(data.explanation)
+         .setColor(0xff0000)
+         .setFooter('APOD for ' + data.date + ' • Photo by ' + data.copyright);
+
+    await channel.send(embed).catch(console.log);
   });
 }
 
