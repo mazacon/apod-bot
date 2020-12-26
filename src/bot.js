@@ -28,7 +28,7 @@ async function main() {
     embed.setTitle(data.title)
          .setImage(data.hdurl)
          .setDescription(data.explanation)
-         .setColor(0xff0000)
+         .setColor('PURPLE')
          .setFooter('APOD for ' + data.date + ' • Photo by ' + data.copyright);
 
     await channel.send(embed).catch(console.log);
