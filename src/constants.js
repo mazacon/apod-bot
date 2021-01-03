@@ -8,7 +8,6 @@ const TOKENS = {
 };
 const NASA_URL = `https://api.nasa.gov/planetary/apod?api_key=${TOKENS.nasa}`;
 
-
 module.exports = {
   CHANNEL,
   TOKENS,
