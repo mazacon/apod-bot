@@ -1,7 +1,7 @@
 {
   "name": "apod-bot",
-  "version": "0.1.0",
-  "description": "A Discord bot to display the NASA Astronomy Picture of the Day every morning.",
+  "version": "0.2.0",
+  "description": "A Discord bot to display the NASA Astronomy Picture of the Day every day.",
   "main": "src/bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

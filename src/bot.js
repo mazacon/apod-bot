@@ -5,7 +5,7 @@ const https = require('https');
 const schedule = require('node-schedule');
 const discordjs = require('discord.js');
 const client = new discordjs.Client();
-const { CHANNEL, TOKENS, NASA_URL } = require('./constants.js');
+const { TOKENS, NASA_URL } = require('./constants.js');
 
 /**
  * Reaches out to the NASA_URL and returns whatever is needed
@@ -40,11 +40,12 @@ async function getAPOD() {
 }
 
 /**
+ * @param {string} jobChannel
  * This function sends the APOD as a formatted embed Discord message
  */
-async function sendAPOD() {
+async function sendAPOD(jobChannel) {
   const data = await getAPOD();
-  const channel = await client.channels.fetch(CHANNEL, true);
+  const channel = await client.channels.fetch(jobChannel, true);
   console.debug(data);
 
   const embed = new discordjs.MessageEmbed();
@@ -81,8 +82,10 @@ function onReady() {
   const { user } = this;
   // if the bot is not logged in then user is null
   if (user !== undefined) {
-    console.log(`Ready as ${user.tag}`);
+    console.log(`Ready as: ${user.tag}`);
+    console.log(`Client ID: ${user.id}`);
   }
+  client.user.setActivity('apod.help');
 }
 
 /**
@@ -91,32 +94,69 @@ function onReady() {
  * @returns {Promise<void>}
  */
 async function onMessage(msg) {
+  // this = Client
+  const { user } = this;
+
   // this will allow us to ignore case-sensitivity when talking to the bot
   const cmd = msg.content.toLowerCase();
 
-  if (cmd === 'apod.get_data') {
-    const pending = await msg.reply('Fetching your data!');
-    const data = await getAPOD();
-    await pending.delete();
-    await msg.reply(JSON.stringify(data));
-  }
-  if (cmd === 'apod.get_apod') {
-    await sendAPOD();
+  if (cmd.substring(0, 5) === 'apod.') {
+    let method = '';
+    let args = [];
+    if (cmd.indexOf(' ') === -1) method = cmd.substring(5)
+    else {
+      method = cmd.substring(5, cmd.indexOf(' '));
+      args = cmd.substring(cmd.indexOf(' ')+1).split(' ');
+    }
+
+    switch (method) {
+      case 'get_invite':
+        const botURL = 'https://discord.com/oauth2/authorize?client_id=';
+        msg.reply(botURL+user.id+'&scope=bot');
+        break;
+      case 'set_channel':
+        msg.reply('WIP');
+        break;
+      case 'set_time':
+        msg.reply('WIP');
+        break;
+      case 'set':
+        let h = args[1].substring(0,2);
+        let m = args[1].substring(2);
+        let cron = `${+m} ${+h} * * *`;
+        schedule.scheduleJob(args[0], cron, sendAPOD(args[0]));
+        break;
+      case 'get_raw':
+        const pending = await msg.reply('Fetching your data!');
+        const data = await getAPOD();
+        await pending.delete();
+        await msg.reply(JSON.stringify(data));
+        break;
+      case 'get':
+        await sendAPOD(msg.channel.id);
+        break;
+      case 'help':
+        const commands = new discordjs.MessageEmbed();
+        commands.addFields(
+          { name: 'apod.get_invite', value: "Retrieves bots' invite link." },
+          { name: 'apod.get_raw', value: "Retrieves APODs' raw JSON data" },
+          { name: 'apod.get', value: "Will immediately send formatted APOD" },
+          { 
+            name: 'apod.set <channel_id> <milCST>',
+            value: "Sets where/when to send APODs. Ex. `apod.set 123456789123456789 0805` \
+                    will send in channel 123456789123456789 at 8:05 CST daily." 
+          },
+        )
+        msg.reply(commands)
+        break;
+    }
   }
 }
 
 async function main() {
   client.on('ready', onReady.bind(client));
   client.on('message', onMessage.bind(client));
-
   await client.login(TOKENS.discord);
-
-  let job = schedule.scheduleJob('playgroundJob', '* * * * *', sendAPOD);
-
-  console.log(schedule.scheduledJobs)
-  console.log('gap');
-  console.log(job)
 }
 
 main().catch(console.error);
-
