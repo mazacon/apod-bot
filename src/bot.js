@@ -2,7 +2,7 @@
  * This bot sends the NASA APOD in discord channel on configurable time every day
  */
 const https = require('https');
-const schedule = require('node-schedule');
+const ns = require('node-schedule');
 const discordjs = require('discord.js');
 const client = new discordjs.Client();
 const { TOKENS, NASA_URL } = require('./constants.js');
@@ -63,7 +63,7 @@ async function sendAPOD(jobChannel) {
   else await channel.send(data.url).catch(console.log);
 
   let footer = 'APOD for ' + data.date;
-  if (data.copyright) footer += ' • Photo by ' + data.copyright;
+  if (data.copyright) footer += ` • ${data.media_type} by ` + data.copyright;
 
   embed
     .setDescription(data.explanation)
@@ -86,6 +86,7 @@ function onReady() {
     console.log(`Client ID: ${user.id}`);
   }
   client.user.setActivity('apod.help');
+  // TODO: set jobs for all lines in jobs.csv
 }
 
 /**
@@ -114,26 +115,48 @@ async function onMessage(msg) {
         const botURL = 'https://discord.com/oauth2/authorize?client_id=';
         msg.reply(botURL+user.id+'&scope=bot');
         break;
-      case 'set_channel':
-        msg.reply('WIP');
-        break;
-      case 'set_time':
-        msg.reply('WIP');
-        break;
       case 'set':
-        let h = args[1].substring(0,2);
-        let m = args[1].substring(2);
-        let cron = `${+m} ${+h} * * *`;
-        schedule.scheduleJob(args[0], cron, sendAPOD(args[0]));
+        // TODO: need to add check that channel is text channel and that bot has permission to post in it
+
+        // if channel provided is in messagers' guild, then proceed with scheduling job
+        if (msg.guild.channels.cache.get(args[0])) {
+          if (ns.cancelJob(args[0])) console.log('job already existed'); // remove job from csv
+          let h = args[1].substring(0,2);
+          let m = args[1].substring(2);
+          let cron = `${+m} ${+h} * * *`;
+          ns.scheduleJob(args[0], cron, async () => { await sendAPOD(args[0]) });
+          // TODO: add job to csv
+          await msg.reply(`Job added to ${args[0]} for ${args[1]} daily`);
+        }
+        else await msg.reply('Error: Invalid Channel ID');
+        break;
+      case 'cancel':
+        // TODO: need to add check that channel is text channel and that bot has permission to post in it
+
+        // if channel provided is in guild, try to cancel job
+        if (msg.guild.channels.cache.get(args[0]) && ns.cancelJob(args[0])) {
+          await msg.reply('job for channel ' + args[0] + ' removed.')
+          // TODO: remove line from csv, where pk is the channel
+        }
+        else await msg.reply('Cancel failed for ' + args[0]);
+        break;
+      case 'show':
+        // TODO: will show all jobs for current guild
+
+        // let server = msg.guild.id
+        // let guildJobs = [];
+        // // for line in csv
+        // //   if line[2] === server
+        // //   let 
+        break;
+      case 'get':
+        await sendAPOD(msg.channel.id);
         break;
       case 'get_raw':
         const pending = await msg.reply('Fetching your data!');
         const data = await getAPOD();
         await pending.delete();
         await msg.reply(JSON.stringify(data));
-        break;
-      case 'get':
-        await sendAPOD(msg.channel.id);
         break;
       case 'help':
         const commands = new discordjs.MessageEmbed();
@@ -143,11 +166,12 @@ async function onMessage(msg) {
           { name: 'apod.get', value: "Will immediately send formatted APOD" },
           { 
             name: 'apod.set <channel_id> <milCST>',
-            value: "Sets where/when to send APODs. Ex. `apod.set 123456789123456789 0805` \
-                    will send in channel 123456789123456789 at 8:05 CST daily." 
+            value: "Sets where/when to send APODs. Ex. `apod.set \
+                    123456789123456789 0805` will send in channel \
+                    123456789123456789 at 8:05 CST daily." 
           },
         )
-        msg.reply(commands)
+        await msg.reply(commands)
         break;
     }
   }
