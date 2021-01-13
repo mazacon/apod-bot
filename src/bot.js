@@ -46,24 +46,29 @@ async function getAPOD() {
 async function sendAPOD(jobChannel) {
   const data = await getAPOD();
   const channel = await client.channels.fetch(jobChannel, true);
-  console.debug(data);
 
   const embed = new discordjs.MessageEmbed();
 
   if (data.media_type === 'image') {
-    if (data.hdurl) embed.setImage(data.hdurl);
-    else embed.setImage(data.url);
+    if (data.hdurl) {
+      embed.setImage(data.hdurl);
+    } else {
+      embed.setImage(data.url);
+    }
     embed.setTitle(data.title);
   }
   else if (data.url.includes('youtube')) {
     let link = 'https://www.youtube.com/watch?v=';
     link += data.url.substring(30);
-    await channel.send(link).catch(console.log);
+    await channel.send(link);
+  } else {
+    await channel.send(data.url).catch(console.log);
   }
-  else await channel.send(data.url).catch(console.log);
 
   let footer = 'APOD for ' + data.date;
-  if (data.copyright) footer += ` • ${data.media_type} by ` + data.copyright;
+  if (data.copyright) {
+    footer += ` • ${data.media_type} by ` + data.copyright;
+  }
 
   embed
     .setDescription(data.explanation)
@@ -104,8 +109,9 @@ async function onMessage(msg) {
   if (cmd.substring(0, 5) === 'apod.') {
     let method = '';
     let args = [];
-    if (cmd.indexOf(' ') === -1) method = cmd.substring(5)
-    else {
+    if (cmd.indexOf(' ') === -1) {
+      method = cmd.substring(5)
+    } else {
       method = cmd.substring(5, cmd.indexOf(' '));
       args = cmd.substring(cmd.indexOf(' ')+1).split(' ');
     }
@@ -127,27 +133,21 @@ async function onMessage(msg) {
           ns.scheduleJob(args[0], cron, async () => { await sendAPOD(args[0]) });
           // TODO: add job to csv
           await msg.reply(`Job added to ${args[0]} for ${args[1]} daily`);
+        } else {
+          await msg.reply('Error: Invalid Channel ID');
         }
-        else await msg.reply('Error: Invalid Channel ID');
         break;
       case 'cancel':
         // TODO: need to add check that channel is text channel and that bot has permission to post in it
 
-        // if channel provided is in guild, try to cancel job
-        if (msg.guild.channels.cache.get(args[0]) && ns.cancelJob(args[0])) {
+        const channel = await msg.guild.channels.cache.get(args[0]);
+        // if channel is in guild and job cancel successful
+        if (channelInGuild && ns.cancelJob(args[0])) {
           await msg.reply('job for channel ' + args[0] + ' removed.')
           // TODO: remove line from csv, where pk is the channel
+        } else {
+          await msg.reply('Cancel failed for ' + args[0]);
         }
-        else await msg.reply('Cancel failed for ' + args[0]);
-        break;
-      case 'show':
-        // TODO: will show all jobs for current guild
-
-        // let server = msg.guild.id
-        // let guildJobs = [];
-        // // for line in csv
-        // //   if line[2] === server
-        // //   let 
         break;
       case 'get':
         await sendAPOD(msg.channel.id);
@@ -156,7 +156,12 @@ async function onMessage(msg) {
         const pending = await msg.reply('Fetching your data!');
         const data = await getAPOD();
         await pending.delete();
-        await msg.reply(JSON.stringify(data));
+
+        try {
+          await msg.reply(`\`\`\`json\n${JSON.stringify(data)}\n\`\`\``);
+        } catch (e) {
+          await msg.reply("Problem parsing JSON");
+        }
         break;
       case 'help':
         const commands = new discordjs.MessageEmbed();
